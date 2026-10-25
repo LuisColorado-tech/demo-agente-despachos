@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Demo — Agente de consultas para despachos de abogados</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --tinta:#111418; --papel:#f6f6f4; --linea:#d9d9d4; --acento:#1f6f4a;
+    --burbuja-cliente:#ffffff; --burbuja-agente:#dcf8c6; --gris:#6b6f76;
+    --alerta:#8a2c1c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.55 Helvetica,Arial,sans-serif;background:var(--papel);color:var(--tinta)}
+  header.marca{display:flex;justify-content:space-between;align-items:baseline;gap:16px;
+    padding:20px 28px;border-bottom:2px solid var(--tinta);flex-wrap:wrap}
+  header.marca h1{font-size:17px;margin:0;letter-spacing:.02em}
+  header.marca span{font-size:11.5px;color:var(--gris);letter-spacing:.08em;text-transform:uppercase}
+  main{display:grid;grid-template-columns:minmax(320px,400px) 1fr;gap:30px;padding:28px;
+    max-width:1180px;margin:0 auto;align-items:start}
+  @media(max-width:900px){main{grid-template-columns:1fr}}
+
+  .telefono{border:1px solid var(--linea);border-radius:18px;overflow:hidden;background:#fff}
+  .barra{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--acento);color:#fff}
+  .barra .avatar{width:34px;height:34px;border-radius:50%;background:#fff;color:var(--acento);
+    display:grid;place-items:center;font:700 13px Times,serif}
+  .barra b{display:block;font-size:14px}
+  .barra small{opacity:.85;font-size:11px}
+  .hilo{height:600px;overflow-y:auto;padding:16px 14px;background:#ece5dd}
+  .msg{max-width:84%;padding:9px 12px;border-radius:12px;margin-bottom:9px;font-size:14px;
+    box-shadow:0 1px 0 rgba(0,0,0,.06);white-space:pre-wrap}
+  .msg.cliente{background:var(--burbuja-cliente);border-top-left-radius:3px}
+  .msg.agente{background:var(--burbuja-agente);margin-left:auto;border-top-right-radius:3px}
+  .msg .hora{display:block;font-size:10px;color:var(--gris);text-align:right;margin-top:4px}
+  .opciones{display:flex;flex-wrap:wrap;gap:7px;padding:10px 12px;border-top:1px solid var(--linea);background:#fff}
+  .opciones button{border:1px solid var(--acento);color:var(--acento);background:#fff;border-radius:14px;
+    padding:6px 10px;font-size:11.5px;cursor:pointer}
+  .opciones button:hover{background:var(--acento);color:#fff}
+  form{display:flex;gap:8px;padding:12px 14px;border-top:1px solid var(--linea);background:#fff}
+  form input{flex:1;border:1px solid var(--linea);border-radius:20px;padding:10px 14px;font:inherit}
+  form button{border:0;border-radius:50%;width:40px;height:40px;background:var(--acento);color:#fff;
+    font-size:16px;cursor:pointer}
+
+  aside .bloque{border:1px solid var(--linea);background:#fff;padding:16px 18px;margin-bottom:16px}
+  aside h2{font-size:11px;text-transform:uppercase;letter-spacing:.11em;margin:0 0 12px;color:var(--gris)}
+  .ficha dl{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;margin:0;font-size:13.5px}
+  .ficha dt{color:var(--gris);font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;padding-top:2px}
+  .ficha dd{margin:0;font-weight:600}
+  .ficha dd.vacio{font-weight:400;color:var(--gris)}
+  .urgencia-alta{color:var(--alerta)}
+  .resumen{margin-top:14px;padding-top:12px;border-top:1px solid var(--linea);font-size:13px;color:#333}
+  .resumen b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--gris);margin-bottom:6px}
+  .nota{font-size:12.5px;color:var(--gris);margin:0}
+  .nota b{color:var(--tinta)}
+  .sello{display:flex;align-items:center;gap:10px;margin-top:12px}
+  .sello .lc{width:30px;height:30px;border:2px solid var(--tinta);display:grid;place-items:center;
+    font:700 12px Times,serif;letter-spacing:.04em}
+  .demo-tag{display:inline-block;border:1px solid var(--alerta);color:var(--alerta);
+    font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:3px}
+</style>
+</head>
+<body>
+<header class="marca">
+  <h1>Agente de consultas — despacho de abogados</h1>
+  <span>Demo · despacho ficticio · sin datos de clientes</span>
+</header>
+
+<main>
+  <section class="telefono">
+    <div class="barra">
+      <div class="avatar">F</div>
+      <div><b>Ferrer &amp; Asociados</b><small>en línea · derecho de familia</small></div>
+    </div>
+    <div class="hilo" id="hilo"></div>
+    <div class="opciones">
+      <button data-atajo="divorcio">Quiero divorciarme</button>
+      <button data-atajo="pension">Pensión de alimentos</button>
+      <button data-atajo="herencia">Herencia</button>
+      <button data-atajo="urgente">Es urgente</button>
+      <button data-atajo="cita">Pedir cita</button>
+    </div>
+    <form id="form">
+      <input id="texto" placeholder="Escribe tu consulta…" autocomplete="off">
+      <button type="submit" aria-label="enviar">↑</button>
+    </form>
+  </section>
+
+  <aside>
+    <div class="bloque ficha">
+      <h2>Ficha que recibe el abogado</h2>
+      <dl>
+        <dt>Área</dt><dd id="f-area" class="vacio">—</dd>
+        <dt>Urgencia</dt><dd id="f-urgencia" class="vacio">—</dd>
+        <dt>Cliente</dt><dd id="f-cliente" class="vacio">—</dd>
+        <dt>Nombre</dt><dd id="f-nombre" class="vacio">—</dd>
+        <dt>Teléfono</dt><dd id="f-tel" class="vacio">—</dd>
+        <dt>Cita</dt><dd id="f-cita" class="vacio">—</dd>
+      </dl>
+      <div class="resumen"><b>Resumen para la cita</b><span id="f-resumen">Aún no hay conversación.</span></div>
+    </div>
+
+    <div class="bloque">
+      <h2>Qué demuestra</h2>
+      <p class="nota">
+        <b>Contesta lo que se repite</b> con la información del despacho, no con respuestas genéricas.
+        <br><br>
+        <b>Clasifica</b> por área y urgencia: lo urgente no espera a que alguien abra el correo.
+        <br><br>
+        <b>Recoge los datos mínimos</b> y deja la cita preparada con un resumen escrito para quien la va a atender.
+        <br><br>
+        <b>Pasa a una persona</b> cuando el caso no encaja o el cliente lo pide.
+      </p>
+    </div>
+
+    <div class="bloque">
+      <h2>Nota honesta</h2>
+      <p class="nota">
+        Demostración local, sin conexión a WhatsApp ni a datos reales. El despacho es ficticio y las
+        tarifas son de ejemplo. Un caso real se monta sobre WhatsApp Business API con los documentos
+        y los precios del despacho.
+      </p>
+      <span class="demo-tag">demo</span>
+      <div class="sello"><div class="lc">LC</div><span class="nota">Luis Colorado · ingeniería de software</span></div>
+    </div>
+  </aside>
+</main>
+
+<script>
+/* Base de conocimiento: consultas típicas de un despacho de familia (ficticio). */
+const BASE = [
+  {claves:["divorcio","divorciar","separar","separacion","matrimonio"],
+   area:"Familia · divorcio", urgencia:"normal",
+   respuesta:"El divorcio de mutuo acuerdo parte de 900 € más IVA y suele resolverse en 3 o 4 meses. Si hay desacuerdo en bienes o en los hijos, cambia el planteamiento y hay que verlo en consulta.\n\n¿El divorcio lo piden los dos, o hay algo en lo que no se ponen de acuerdo?",
+   resumen:"Consulta por divorcio. Falta saber si es de mutuo acuerdo o contencioso."},
+
+  {claves:["pension","alimentos","manutencion","custodia","hijos","hija","hijo","visitas"],
+   area:"Familia · hijos", urgencia:"normal",
+   respuesta:"En pensión de alimentos lo primero es ver los ingresos de ambos y los gastos del menor. La cuantía la fija el juez, pero se puede pedir medida provisional si no hay acuerdo.\n\n¿Cuántos hijos son y con quién viven ahora mismo?",
+   resumen:"Consulta por pensión de alimentos o custodia. Falta número de hijos y situación actual."},
+
+  {claves:["herencia","sucesion","testamento","fallecio","fallecimiento","viuda","legitima"],
+   area:"Sucesiones", urgencia:"normal",
+   respuesta:"En una herencia lo primero es el certificado de defunción y el testamento, si lo hay. De ahí sale el inventario y el reparto; el plazo para aceptar o renunciar es de seis meses.\n\n¿Hay testamento, y sabes si la casa está a nombre del fallecido?",
+   resumen:"Consulta por herencia. Falta confirmar testamento y bienes principales."},
+
+  {claves:["despido","despedido","laboral","indemnizacion","finiquito","trabajo"],
+   area:"Laboral", urgencia:"normal",
+   respuesta:"Un despido tiene 20 días hábiles para impugnarse, así que el tiempo corre. Para valorarlo necesito la carta de despido y la antigüedad.\n\n¿Tienes la carta y desde cuándo trabajabas allí?",
+   resumen:"Consulta laboral por despido. Plazo de 20 días hábiles: es lo primero que hay que mirar."},
+
+  {claves:["maltrato","violencia","amenaza","amenazas","miedo","alejamiento","policia","urgente","emergencia"],
+   area:"Familia · urgente", urgencia:"alta",
+   respuesta:"Eso no puede esperar a una cita. Te paso ahora mismo con una abogada del despacho y te llama en menos de 15 minutos.\n\nSi hay riesgo físico en este momento, llama también al 091 o al 016. Dime tu nombre y un teléfono y le paso el caso ya.",
+   resumen:"URGENTE: posible violencia o amenazas. Pasa a persona de inmediato."},
+
+  {claves:["precio","cuanto","cuesta","honorarios","tarifa","consulta"],
+   area:"Consulta informativa", urgencia:"normal",
+   respuesta:"La primera consulta son 60 € y dura 45 minutos, con una abogada de familia. Si después encargáis el caso, esos 60 € se descuentan de los honorarios.\n\n¿Prefieres que te busque hueco esta semana o la próxima?",
+   resumen:"Pregunta por honorarios de la primera consulta."},
+
+  {claves:["documentos","papeles","necesito llevar","que llevo","requisitos"],
+   area:"Consulta informativa", urgencia:"normal",
+   respuesta:"Para la primera cita, con el DNI y lo que tengas del caso es suficiente: escrituras, nóminas, mensajes o la carta que hayas recibido. Si falta algo, se pide después.\n\n¿De qué tema es, para decirte exactamente qué traer?",
+   resumen:"Pide la lista de documentos para la primera cita."},
+
+  {claves:["horario","abren","cierran","donde","direccion","oficina","telefono"],
+   area:"Consulta informativa", urgencia:"normal",
+   respuesta:"Estamos en Calle Serrano 41, segundo derecha, en Madrid. Atendemos de lunes a jueves de 9:00 a 19:00 y los viernes hasta las 14:00.\n\n¿Te viene mejor por la mañana o por la tarde?",
+   resumen:"Consulta por ubicación y horario."}
+];
+
+const hilo = document.getElementById("hilo");
+const form = document.getElementById("form");
+const input = document.getElementById("texto");
+const ficha = {area:null, urgencia:null, cliente:"Nuevo", nombre:null, tel:null, cita:null, resumen:null};
+
+function hora(){const d=new Date();return d.getHours()+":"+String(d.getMinutes()).padStart(2,"0");}
+
+function pintar(texto, quien){
+  const div = document.createElement("div");
+  div.className = "msg " + quien;
+  div.textContent = texto;
+  const h = document.createElement("span"); h.className="hora"; h.textContent = hora();
+  div.appendChild(h);
+  hilo.appendChild(div);
+  // al abrir, se lee desde arriba; solo baja solo cuando ya hay interacción
+  if(window.__interactuado) hilo.scrollTop = hilo.scrollHeight;
+}
+
+function set(id, valor, vacio){
+  const el = document.getElementById(id);
+  el.textContent = valor || "—";
+  el.className = (valor ? "" : "vacio") + (id === "f-urgencia" && valor === "Alta" ? " urgencia-alta" : "");
+}
+
+function refrescar(){
+  set("f-area", ficha.area);
+  set("f-urgencia", ficha.urgencia);
+  set("f-cliente", ficha.cliente);
+  set("f-nombre", ficha.nombre);
+  set("f-tel", ficha.tel);
+  set("f-cita", ficha.cita);
+  document.getElementById("f-resumen").textContent = ficha.resumen || "Aún no hay conversación.";
+}
+
+/* Recuperación por coincidencia de claves. */
+function buscar(texto){
+  const t = (texto||"").toLowerCase();
+  let mejor=null, puntos=0;
+  for(const f of BASE){
+    let p=0;
+    for(const k of f.claves){ if(t.includes(k)) p += k.length >= 6 ? 2 : 1; }
+    if(p>puntos){puntos=p; mejor=f;}
+  }
+  return puntos>0 ? mejor : null;
+}
+
+/* Detecta nombre y teléfono si los escribe. */
+function extraerDatos(texto){
+  const tel = texto.match(/(\+?\d[\d\s]{7,})/);
+  if(tel) ficha.tel = tel[1].trim();
+  const nom = texto.match(/(?:me llamo|soy|mi nombre es)\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)?)/i);
+  if(nom) ficha.nombre = nom[1];
+  if(/cita|agendar|reservar|hueco|lunes|martes|miercoles|miércoles|jueves|viernes|mañana|tarde/i.test(texto)
+     && !ficha.cita) ficha.cita = "Solicitada";
+}
+
+function responder(texto){
+  extraerDatos(texto);
+  const f = buscar(texto);
+  if(!f){
+    ficha.resumen = ficha.resumen || "Consulta fuera de la base: pasa a persona.";
+    ficha.urgencia = ficha.urgencia || "normal";
+    refrescar();
+    return "Eso no lo tengo en la información del despacho, así que mejor te lo responde una persona del equipo. Les paso tu mensaje y te escriben en un rato.\n\nSi quieres, dime tu nombre y un teléfono y les adelanto la llamada.";
+  }
+  ficha.area = f.area;
+  ficha.urgencia = f.urgencia;
+  ficha.resumen = f.resumen;
+  refrescar();
+  return f.respuesta;
+}
+
+function enviar(texto){
+  if(!texto || !texto.trim()) return;
+  pintar(texto,"cliente");
+  setTimeout(()=>pintar(responder(texto),"agente"), 420);
+}
+
+form.addEventListener("submit", e=>{
+  e.preventDefault();
+  const t = input.value; input.value="";
+  enviar(t);
+});
+
+const ATAJOS = {
+  divorcio:"Quiero divorciarme y no sé por dónde empezar",
+  pension:"Necesito saber lo de la pensión de alimentos de mis hijos",
+  herencia:"Ha fallecido mi padre y hay que resolver la herencia",
+  urgente:"Es urgente, recibo amenazas de mi expareja",
+  cita:"Quiero pedir cita con una abogada"
+};
+
+document.querySelectorAll("[data-atajo]").forEach(b=>{
+  b.addEventListener("click", ()=>enviar(ATAJOS[b.dataset.atajo]));
+});
+
+/* Conversación de arranque, para que se vea funcionando al abrir. */
+pintar("Hola, buenas. Me quiero divorciar y no sé cómo se hace ni cuánto cuesta.","cliente");
+setTimeout(()=>pintar("El divorcio de mutuo acuerdo parte de 900 € más IVA y suele resolverse en 3 o 4 meses. Si hay desacuerdo en bienes o en los hijos, cambia el planteamiento y hay que verlo en consulta.\n\n¿El divorcio lo piden los dos, o hay algo en lo que no se ponen de acuerdo?","agente"),260);
+setTimeout(()=>pintar("Los dos estamos de acuerdo. ¿Podemos verlo esta semana? Me llamo Marta Ruiz, 612 34 56 78","cliente"),600);
+setTimeout(()=>{
+  extraerDatos("Me llamo Marta Ruiz, 612 34 56 78");
+  ficha.area = "Familia · divorcio"; ficha.urgencia = "normal";
+  ficha.cita = "Propuesta · jue 30/10, 10:00";
+  ficha.resumen = "Divorcio de mutuo acuerdo. Interesada en cita esta semana. Datos recogidos.";
+  refrescar();
+  pintar("Perfecto, Marta. Tengo hueco el jueves 30 a las 10:00 o el viernes 31 a las 17:00 con una abogada de familia. La primera consulta son 60 € y se descuentan si encargáis el caso.\n\n¿Cuál de las dos te viene mejor?","agente");
+},900);
+refrescar();
+</script>
+</body>
+</html>
